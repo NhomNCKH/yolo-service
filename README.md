@@ -28,6 +28,21 @@ cd yolo-service
 ```
 
 ## 3. Cách chạy ở máy local
+# Terminal 1: Redis
+docker run -d -p 6379:6379 redis
+
+# Terminal 2: YOLO service
+cd D:\NCKH\yolo-service
+source venv/Scripts/activate
+python -m uvicorn app.main:app --reload --port 8001
+
+# Terminal 3: Backend NestJS
+cd D:\NCKH\ToeicBoost_BE
+npm run start:dev
+
+# Terminal 4: Frontend
+cd D:\NCKH\ToeicBoost_FE
+npm run dev
 
 ### Bước 1: Tạo môi trường ảo
 
