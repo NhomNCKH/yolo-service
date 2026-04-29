@@ -10,11 +10,34 @@ class RedisClient:
         self.client = None
     
     async def connect(self):
-        self.client = await redis.from_url(
+        if self.client is not None:
+            return
+
+        self.client = redis.from_url(
             f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}",
             decode_responses=True
         )
+        await self.client.ping()
         logger.info("Connected to Redis")
+
+    async def ping(self) -> bool:
+        if self.client is None:
+            return False
+
+        try:
+            await self.client.ping()
+            return True
+        except Exception as exc:
+            logger.warning(f"Redis ping failed: {exc}")
+            return False
+
+    async def close(self):
+        if self.client is None:
+            return
+
+        await self.client.aclose()
+        self.client = None
+        logger.info("Redis connection closed")
     
     async def publish_violation(self, violation_data: dict):
         """Publish violation to backend"""

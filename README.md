@@ -152,10 +152,66 @@ docker run -p 8001:8001 --env-file .env yolo-service
 
 Lưu ý:
 
-- `Dockerfile` hiện tại sẽ tải model YOLO trong lúc build image
+- `Dockerfile` dùng file model đang có sẵn trong thư mục `models/`
 - nếu service cần Redis thì phải đảm bảo `REDIS_HOST` trỏ đúng tới Redis đang chạy
 
-## 5. Kiểm tra service đã chạy chưa
+### Chạy production bằng Docker Compose
+
+File `docker-compose.yml` đã đóng gói sẵn:
+
+- `yolo-service`
+- `redis`
+
+Chạy:
+
+```bash
+cp .env.example .env
+docker compose up -d --build
+```
+
+Kiểm tra:
+
+```bash
+docker compose ps
+curl http://localhost:8001/health
+```
+
+Tắt:
+
+```bash
+docker compose down
+```
+
+## 5. Chạy như một service trên server
+
+Repo đã kèm sẵn unit file:
+
+```text
+deploy/systemd/yolo-service.service
+```
+
+Quy ước deploy:
+
+```bash
+mkdir -p /opt/yolo-service
+cd /opt/yolo-service
+# copy source code vào đây
+cp .env.example .env
+docker compose up -d --build
+cp deploy/systemd/yolo-service.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now yolo-service
+```
+
+Lệnh vận hành:
+
+```bash
+systemctl status yolo-service
+journalctl -u yolo-service -f
+docker compose logs -f yolo-service
+```
+
+## 6. Kiểm tra service đã chạy chưa
 
 ### Kiểm tra health
 
@@ -168,7 +224,8 @@ Kết quả mong đợi:
 ```json
 {
   "status": "ok",
-  "model_loaded": true
+  "model_loaded": true,
+  "redis_connected": true
 }
 ```
 
@@ -187,7 +244,7 @@ curl -X POST "http://localhost:8001/api/analyze" `
   -F "exam_id=exam456"
 ```
 
-## 6. WebSocket để gửi frame realtime
+## 7. WebSocket để gửi frame realtime
 
 Endpoint WebSocket:
 
@@ -203,7 +260,7 @@ ws://localhost:8001/ws/user123/exam456
 
 Frontend có thể mở kết nối tới endpoint này và gửi frame ảnh dạng base64 để service xử lý.
 
-## 7. Cấu trúc thư mục chính
+## 8. Cấu trúc thư mục chính
 
 ```text
 yolo-service/

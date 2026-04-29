@@ -7,6 +7,7 @@ import logging
 from app.config import settings
 from app.services.websocket_manager import manager
 from app.services.proctoring_engine import proctoring_engine
+from app.services.redis_client import redis_client
 from app.api import router
 
 logging.basicConfig(level=logging.INFO)
@@ -17,8 +18,13 @@ async def lifespan(app: FastAPI):
     # Khởi tạo
     logger.info("Starting YOLO Proctoring Service...")
     await proctoring_engine.initialize()
+    try:
+        await redis_client.connect()
+    except Exception as exc:
+        logger.warning(f"Redis unavailable during startup: {exc}")
     yield
     # Dọn dẹp
+    await redis_client.close()
     await proctoring_engine.cleanup()
     logger.info("Shutting down...")
 
@@ -43,7 +49,11 @@ app.include_router(router, prefix="/api")
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "model_loaded": proctoring_engine.is_ready}
+    return {
+        "status": "ok",
+        "model_loaded": proctoring_engine.is_ready,
+        "redis_connected": await redis_client.ping(),
+    }
 
 @app.websocket("/ws/{user_id}/{exam_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str, exam_id: str):
