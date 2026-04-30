@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     
     # Detection thresholds
     CONFIDENCE_THRESHOLD: float = 0.5
+    PERSON_CONFIDENCE_THRESHOLD: float = 0.35
     IOU_THRESHOLD: float = 0.45
     
     # WebSocket
@@ -25,6 +26,11 @@ class Settings(BaseSettings):
     # Proctoring
     MAX_WARNINGS: int = 5
     VIOLATION_WINDOW_SECONDS: int = 60
+    VIOLATION_COOLDOWN_SECONDS: int = 12
+    LEAVING_FRAME_CONSECUTIVE_FRAMES: int = 4
+    LOOKING_AWAY_CONSECUTIVE_FRAMES: int = 4
+    FACE_OCCLUDED_CONSECUTIVE_FRAMES: int = 3
+    EYE_CLOSED_CONSECUTIVE_FRAMES: int = 6
     
     class Config:
         env_file = ".env"
