@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 TEMPORAL_THRESHOLDS = {
+    "multiple_faces": lambda: settings.MULTIPLE_FACES_CONSECUTIVE_FRAMES,
     "leaving_frame": lambda: settings.LEAVING_FRAME_CONSECUTIVE_FRAMES,
     "looking_away": lambda: settings.LOOKING_AWAY_CONSECUTIVE_FRAMES,
     "face_occluded": lambda: settings.FACE_OCCLUDED_CONSECUTIVE_FRAMES,
@@ -48,15 +49,24 @@ class ProctoringEngine:
         violations: List[Dict] = []
         diagnostics = {"person_count": 0, "raw": {}}
 
-        person_count = await self.detector.count_persons(frame)
+        persons = await self.detector.detect_persons(frame)
+        person_count = len(persons)
         diagnostics["person_count"] = person_count
+        diagnostics["raw"]["persons"] = persons
 
+        multiple_confidence = 0.0
         if person_count > 1:
-            violations.append(self._violation(
-                "multiple_faces",
-                min(person_count * 0.3, 1.0),
-                {"person_count": person_count},
-            ))
+            confidences = sorted((float(p.get("confidence", 0.0)) for p in persons), reverse=True)
+            multiple_confidence = min(confidences[1] if len(confidences) > 1 else 0.7, 1.0)
+
+        self._add_temporal_violation(
+            state,
+            violations,
+            action="multiple_faces",
+            active=person_count > 1,
+            confidence=multiple_confidence,
+            details={"person_count": person_count},
+        )
 
         phones = await self.detector.detect_phones(frame)
         if phones:

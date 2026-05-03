@@ -36,7 +36,10 @@ class BehaviorDetector:
             frame,
             conf_threshold=settings.PERSON_CONFIDENCE_THRESHOLD,
         )
-        persons = [d for d in detections if d.get("class") == "person"]
+        persons = self._filter_person_detections(
+            [d for d in detections if d.get("class") == "person"],
+            frame,
+        )
 
         if persons:
             return persons
@@ -69,6 +72,62 @@ class BehaviorDetector:
     async def count_persons(self, frame: np.ndarray) -> int:
         persons = await self.detect_persons(frame)
         return len(persons)
+
+    def _filter_person_detections(self, detections: List[Dict], frame: np.ndarray) -> List[Dict]:
+        if not detections:
+            return []
+
+        height, width = frame.shape[:2]
+        frame_area = max(width * height, 1)
+        filtered: List[Dict] = []
+
+        for detection in detections:
+            bbox = detection.get("bbox") or []
+            if len(bbox) != 4:
+                continue
+
+            x1, y1, x2, y2 = [int(v) for v in bbox]
+            box_area = max(0, x2 - x1) * max(0, y2 - y1)
+            area_ratio = box_area / frame_area
+
+            if area_ratio < settings.PERSON_MIN_AREA_RATIO:
+                continue
+
+            filtered.append({
+                **detection,
+                "bbox": [x1, y1, x2, y2],
+                "area_ratio": area_ratio,
+            })
+
+        filtered.sort(key=lambda item: float(item.get("confidence", 0.0)), reverse=True)
+
+        deduped: List[Dict] = []
+        for detection in filtered:
+            if any(self._iou(detection["bbox"], kept["bbox"]) >= settings.IOU_THRESHOLD for kept in deduped):
+                continue
+
+            if deduped and float(detection.get("confidence", 0.0)) < settings.MULTIPLE_PERSON_CONFIDENCE_THRESHOLD:
+                continue
+
+            deduped.append(detection)
+
+        return deduped
+
+    def _iou(self, left: List[int], right: List[int]) -> float:
+        x1 = max(left[0], right[0])
+        y1 = max(left[1], right[1])
+        x2 = min(left[2], right[2])
+        y2 = min(left[3], right[3])
+
+        intersection = max(0, x2 - x1) * max(0, y2 - y1)
+        if intersection <= 0:
+            return 0.0
+
+        left_area = max(0, left[2] - left[0]) * max(0, left[3] - left[1])
+        right_area = max(0, right[2] - right[0]) * max(0, right[3] - right[1])
+        union = left_area + right_area - intersection
+
+        return intersection / union if union > 0 else 0.0
 
     async def detect_phones(self, frame: np.ndarray) -> List[Dict]:
         return await self.model.detect_objects(frame, ["cell phone"])
