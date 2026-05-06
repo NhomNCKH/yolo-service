@@ -43,6 +43,9 @@ npm run start:dev
 # Terminal 4: Frontend
 cd D:\NCKH\ToeicBoost_FE
 npm run dev
+# Terminal 5: face verification service
+cd vào thư mục face-verification-service
+docker compose up --build -d
 
 ### Bước 1: Tạo môi trường ảo
 
