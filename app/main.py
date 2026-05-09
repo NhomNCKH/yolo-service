@@ -64,5 +64,19 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str, exam_id: str):
             data = await websocket.receive_text()
             await manager.handle_frame(user_id, exam_id, data)
             
-    except WebSocketDisconnect:
+    except WebSocketDisconnect as exc:
+        logger.info(
+            "WebSocket disconnected user=%s exam=%s code=%s",
+            user_id,
+            exam_id,
+            getattr(exc, "code", None),
+        )
+    except Exception as exc:
+        logger.exception(
+            "Unexpected websocket error user=%s exam=%s error=%s",
+            user_id,
+            exam_id,
+            exc,
+        )
+    finally:
         manager.disconnect(user_id, exam_id)

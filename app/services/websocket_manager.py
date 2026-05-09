@@ -26,7 +26,21 @@ class ConnectionManager:
     
     async def handle_frame(self, user_id: str, exam_id: str, data: str):
         try:
-            frame_data = json.loads(data)
+            # Handle ping messages (accept flexible payload shapes)
+            raw = data.strip()
+            if raw == "ping":
+                key = f"{user_id}:{exam_id}"
+                if key in self.active_connections:
+                    await self.active_connections[key].send_json({"type": "pong"})
+                return
+
+            frame_data = json.loads(raw)
+            if str(frame_data.get("type", "")).lower() == "ping":
+                key = f"{user_id}:{exam_id}"
+                if key in self.active_connections:
+                    await self.active_connections[key].send_json({"type": "pong"})
+                return
+
             image_base64 = frame_data.get('image')
             
             if image_base64:
@@ -49,6 +63,12 @@ class ConnectionManager:
                         'timestamp': result['timestamp']
                     })
                     
+        except json.JSONDecodeError:
+            logger.warning(
+                "Invalid websocket payload format from %s:%s",
+                user_id,
+                exam_id,
+            )
         except Exception as e:
             logger.error(f"Error handling frame: {e}")
 

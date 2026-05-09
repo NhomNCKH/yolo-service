@@ -53,6 +53,12 @@ class ProctoringEngine:
         person_count = len(persons)
         diagnostics["person_count"] = person_count
         diagnostics["raw"]["persons"] = persons
+        
+        # Debug logging for person detection
+        if person_count > 1:
+            logger.warning(f"Multiple persons detected: {person_count} persons")
+            for i, person in enumerate(persons):
+                logger.warning(f"  Person {i+1}: conf={person.get('confidence', 0):.3f}, area_ratio={person.get('area_ratio', 0):.3f}, bbox={person.get('bbox')}")
 
         multiple_confidence = 0.0
         if person_count > 1:
@@ -95,19 +101,21 @@ class ProctoringEngine:
             confidence=look_conf,
         )
 
-        # A visible person should clear any "left frame" streak immediately.
-        leaving, leave_conf = await self.detector.detect_leaving_frame(frame)
-        if person_count > 0:
-            leaving = False
-            leave_conf = 0.0
+        # Check leaving frame using YOLO-only detection (no face fallback)
+        # to properly detect when person leaves the frame
+        persons_yolo_only = await self.detector.detect_persons_yolo_only(frame)
+        leaving = len(persons_yolo_only) == 0
+        leave_conf = 0.8 if leaving else 0.0
+        
         diagnostics["raw"]["leaving_frame"] = leaving
+        diagnostics["raw"]["persons_yolo_only"] = len(persons_yolo_only)
         self._add_temporal_violation(
             state,
             violations,
             action="leaving_frame",
             active=leaving,
             confidence=leave_conf,
-            details={"person_count": person_count},
+            details={"person_count": person_count, "yolo_person_count": len(persons_yolo_only)},
         )
 
         occluded, occ_conf = await self.detector.detect_face_occlusion(frame)

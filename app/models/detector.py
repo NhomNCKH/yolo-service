@@ -44,6 +44,7 @@ class BehaviorDetector:
         if persons:
             return persons
 
+        # Fallback to face detection
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         face_results = self.face_detection.process(rgb_frame)
         fallback_persons: List[Dict] = []
@@ -68,6 +69,23 @@ class BehaviorDetector:
             })
 
         return fallback_persons
+
+        return []
+
+    async def detect_persons_yolo_only(self, frame: np.ndarray) -> List[Dict]:
+        """Detect persons using YOLO only, without face detection fallback.
+        
+        Used for leaving_frame detection to avoid false negatives when only face is visible.
+        """
+        detections = await self.model.detect(
+            frame,
+            conf_threshold=settings.PERSON_CONFIDENCE_THRESHOLD,
+        )
+        persons = self._filter_person_detections(
+            [d for d in detections if d.get("class") == "person"],
+            frame,
+        )
+        return persons
 
     async def count_persons(self, frame: np.ndarray) -> int:
         persons = await self.detect_persons(frame)
@@ -106,8 +124,23 @@ class BehaviorDetector:
             if any(self._iou(detection["bbox"], kept["bbox"]) >= settings.IOU_THRESHOLD for kept in deduped):
                 continue
 
-            if deduped and float(detection.get("confidence", 0.0)) < settings.MULTIPLE_PERSON_CONFIDENCE_THRESHOLD:
-                continue
+            # For multiple persons, require higher confidence and reasonable area ratio
+            if deduped:
+                confidence = float(detection.get("confidence", 0.0))
+                area_ratio = detection.get("area_ratio", 0.0)
+                
+                # Must have high confidence for multiple persons
+                if confidence < settings.MULTIPLE_PERSON_CONFIDENCE_THRESHOLD:
+                    continue
+                
+                # Second person should not be too small compared to first person
+                first_person_area = deduped[0].get("area_ratio", 0.0)
+                if area_ratio < first_person_area * 0.3:  # At least 30% of first person's area
+                    continue
+                    
+                # Second person should not be much larger than first person (possible false positive)
+                if area_ratio > first_person_area * 2.0:
+                    continue
 
             deduped.append(detection)
 
@@ -130,7 +163,13 @@ class BehaviorDetector:
         return intersection / union if union > 0 else 0.0
 
     async def detect_phones(self, frame: np.ndarray) -> List[Dict]:
-        return await self.model.detect_objects(frame, ["cell phone"])
+        # Dùng threshold thấp hơn cho điện thoại vì khó detect
+        detections = await self.model.detect(
+            frame,
+            conf_threshold=settings.PHONE_CONFIDENCE_THRESHOLD,
+        )
+        phones = [d for d in detections if d.get("class") == "cell phone"]
+        return phones
 
     async def detect_forbidden_objects(self, frame: np.ndarray) -> List[Dict]:
         objects = await self.model.detect_objects(frame, ["laptop", "book", "remote"])
@@ -144,6 +183,7 @@ class BehaviorDetector:
         ]
 
     async def detect_face_orientation(self, frame: np.ndarray) -> Tuple[bool, float]:
+        """Detect if face is looking away from camera."""
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.face_mesh.process(rgb_frame)
 
@@ -164,6 +204,7 @@ class BehaviorDetector:
         return is_looking_away, confidence
 
     async def detect_face_occlusion(self, frame: np.ndarray) -> Tuple[bool, float]:
+        """Detect if face is occluded (covered by mask, hand, etc.)."""
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.face_detection.process(rgb_frame)
 
@@ -192,6 +233,7 @@ class BehaviorDetector:
         return False, 0.0
 
     async def detect_eye_closed(self, frame: np.ndarray) -> Tuple[bool, float]:
+        """Detect if eyes are closed."""
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.face_mesh.process(rgb_frame)
 
