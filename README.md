@@ -1,4 +1,9 @@
 # YOLO Proctoring Service
+# test terminal
+cd D:\NCKH\yolo-service
+ .\venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+ cd D:\NCKH\yolo-service
+ .\venv\Scripts\python.exe .\ws_cam_test.py
 
 Đây là service dùng `FastAPI` để chạy model YOLO phục vụ proctoring thi online theo thời gian thực. Service hỗ trợ:
 
