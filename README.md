@@ -1,10 +1,12 @@
-# YOLO Proctoring Service
-# test terminal
-cd D:\NCKH\yolo-service
- .\venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
- cd D:\NCKH\yolo-service
- .\venv\Scripts\python.exe .\ws_cam_test.py
 
+## test terminal
+cd D:\NCKH\yolo-service
+1> .\venv\Scripts\Activate.ps1
+2> .\venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+cd D:\NCKH\yolo-service
+docker run -d --name yolo-redis -p 6379:6379 redis:7
+ .\venv\Scripts\python.exe .\ws_cam_test.py
+# YOLO Proctoring Service
 Đây là service dùng `FastAPI` để chạy model YOLO phục vụ proctoring thi online theo thời gian thực. Service hỗ trợ:
 
 - kiểm tra trạng thái hoạt động
