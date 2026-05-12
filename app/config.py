@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     # Detection thresholds
     CONFIDENCE_THRESHOLD: float = 0.35  # Giảm để bắt nhạy hơn
     PERSON_CONFIDENCE_THRESHOLD: float = 0.40
-    MULTIPLE_PERSON_CONFIDENCE_THRESHOLD: float = 0.70  # Tăng từ 0.50 lên 0.70 để tránh false positive
+    MULTIPLE_PERSON_CONFIDENCE_THRESHOLD: float = 0.50
     PERSON_MIN_AREA_RATIO: float = 0.015
     IOU_THRESHOLD: float = 0.45
     PHONE_CONFIDENCE_THRESHOLD: float = 0.25  # Threshold riêng cho điện thoại (thấp hơn)
@@ -29,9 +29,9 @@ class Settings(BaseSettings):
     # Proctoring
     MAX_WARNINGS: int = 5
     VIOLATION_WINDOW_SECONDS: int = 60
-    VIOLATION_COOLDOWN_SECONDS: int = 2  # Giảm từ 5s xuống 2s
-    MULTIPLE_FACES_CONSECUTIVE_FRAMES: int = 3  # Tăng từ 1 lên 3 để tránh false positive
-    LEAVING_FRAME_CONSECUTIVE_FRAMES: int = 1  # Giảm từ 2 xuống 1 (báo ngay)
+    VIOLATION_COOLDOWN_SECONDS: int = 2
+    MULTIPLE_FACES_CONSECUTIVE_FRAMES: int = 1
+    LEAVING_FRAME_CONSECUTIVE_FRAMES: int = 1
     LOOKING_AWAY_CONSECUTIVE_FRAMES: int = 2
     FACE_OCCLUDED_CONSECUTIVE_FRAMES: int = 2
     EYE_CLOSED_CONSECUTIVE_FRAMES: int = 3
